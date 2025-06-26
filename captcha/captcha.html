@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Joel</title>
+  <title>Picture Slider</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style type="text/css">
@@ -21,32 +21,320 @@
     }
 
     /* Your style here... */
+    #captcha-board {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      user-select: none;
+      background-color: black;
+    }
+
+    .captcha-grid {
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+    }
+    .captcha-grid > img {
+      display: block;
+      width: 100%;  
+      height: 100%;
+      -webkit-user-drag: none;
+    }
   </style>
 </head>
 
 <body>
   <div id="captcha-container">
     <!-- Add your CAPTCHA here: -->
-    Hello world!
-
-    <!-- We've added a sample button. Feel free to remove it: -->
-    <button id="solve">
-      Solve!
-    </button>
+    <div id="captcha-board"></div>
   </div>
 
   <script type="text/javascript">
-    (function(window, document){
-      // This is how you tell the parent window that the CAPTCHA was successful.
-      function captchaSuccess() {
-        window.top.postMessage("success", '*');
+    // Your CAPTCHA code goes here:
+    const get_captchaBoard = document.getElementById("captcha-board");
+    const get_captchaGrid = document.getElementsByClassName("captcha-grid");
+    const indexAdjuster = 1;
+    
+    const blankGrid = {};
+    const adjacentColumn = {};
+    const adjacentRow = {};
+    let boardLayout = [];
+    let columnLayout = [];
+    let rowLayout = [];
+    let imageLayout = [];
+    let pictureLayout = [];
+    let ìmgOptions = [];
+    
+    let setColumns
+    let setRows
+    let maxGrids
+    let gridUp
+    let gridLeft
+    let gridDown
+    let gridRight
+    
+    let imgKind
+    let captchaStatus
+    let difficulty = Math.floor(Math.random() * 2) + 1;
+    
+    myCaptcha();
+    
+    
+    
+    function set_captchaDifficulty() {
+      // 3x3 grid
+      if (difficulty == 1) {
+        setRows = 3;
+        setColumns = 3;
+        maxGrids = setColumns * setRows;
+        
+        ìmgOptions = ["circle", "square"];
+        imgKind = ìmgOptions[Math.floor(Math.random() * ìmgOptions.length)];
+        
+        get_captchaBoard.style.gridTemplateColumns = "repeat(" + `${setColumns}` + ", 1fr)";
+        get_captchaBoard.style.gridTemplateRows = "repeat(" + `${setRows}` + ", 1fr)";
       }
-
-      // Your CAPTCHA code goes here, we've added a simple example below:
-      document.getElementById('solve')
-           .addEventListener('click', () => captchaSuccess());
-
-    })(window, document);
+      // 4x4 grid
+      else if (difficulty == 2) {
+        setRows = 4;
+        setColumns = 4;
+        maxGrids = setColumns * setRows;
+        
+        ìmgOptions = ["florette"];
+        imgKind = ìmgOptions[Math.floor(Math.random() * ìmgOptions.length)];
+        
+        get_captchaBoard.style.gridTemplateColumns = "repeat(" + `${setColumns}` + ", 1fr)";
+        get_captchaBoard.style.gridTemplateRows = "repeat(" + `${setRows}` + ", 1fr)";
+      }
+    }
+    
+    function create_indexLayout() {
+      // create default board properties
+      for (let idxBoard = 0, counter = 1; idxBoard < maxGrids; counter++, idxBoard++) {
+        boardLayout.push(idxBoard);
+        
+        imageLayout.push(counter);
+        pictureLayout.push(counter);
+      }
+      
+      // create given row properties
+      for (let i = 0, idxRow = setRows - indexAdjuster; i < setRows; i++) {
+        for (let i = 0, memory = 0, nextRow = 1; i < setColumns;) {
+          rowLayout.push(idxRow);
+          i++
+          
+          if (i < setColumns) {
+            idxRow = idxRow + setRows;
+            memory++;
+          }
+          else {
+            idxRow = idxRow - ((memory * setRows) + nextRow);
+          }
+        }
+      }
+      
+      // create given column properties
+      for (let idxColumn = 0; idxColumn < maxGrids; idxColumn++) {
+        columnLayout.push(idxColumn);
+      }
+    }
+    
+    function create_blankGrid() {
+      // create default blankGrid properties
+      blankGrid.boardLocation
+      blankGrid.imageLocation
+      blankGrid.image
+      blankGrid.columnCoordinate
+      blankGrid.rowCoordinate
+      
+      blankGrid.givenLocation = boardLayout[maxGrids - indexAdjuster];
+      blankGrid.innerHTML = "";
+      blankGrid.backgroundColor = "white";
+    }
+    
+    function update_blankGrid() {
+      // update blankGrid properties
+      blankGrid.boardLocation = blankGrid.givenLocation;
+      blankGrid.imageLocation = imageLayout[blankGrid.boardLocation];
+      blankGrid.columnCoordinate = columnLayout[blankGrid.boardLocation];
+      blankGrid.rowCoordinate = rowLayout[blankGrid.boardLocation];
+      
+      blankGrid.givenLocation = "unknown";
+      blankGrid.backgroundColor = "white";
+      
+      update_adjacentGrids()
+    }
+    
+    function update_adjacentGrids() {
+      // set current adjacent grids dormant
+      if (captchaStatus == "ready") {dormantGrid(gridUp); dormantGrid(gridLeft); dormantGrid(gridDown); dormantGrid(gridRight);}
+      
+      // locate adjacent grids
+      adjacentColumn.up = blankGrid.columnCoordinate - setColumns;
+      adjacentRow.up = blankGrid.rowCoordinate - setRows;
+      adjacentColumn.down = blankGrid.columnCoordinate + setColumns;
+      adjacentRow.down = blankGrid.rowCoordinate + setRows;
+      
+      // define adjacent-grids
+      if (adjacentColumn.up >= 0) {
+        gridUp = blankGrid.boardLocation - setColumns;
+      } else {gridUp = "outbound";}
+      
+      if (adjacentRow.up >= 0) {
+        gridLeft = blankGrid.boardLocation - 1;
+      } else {gridLeft = "outbound";}
+      
+      if (adjacentColumn.down < maxGrids) {
+        gridDown = blankGrid.boardLocation + setColumns;
+      } else {gridDown = "outbound";}
+      
+      if (adjacentRow.down < maxGrids) {
+        gridRight = blankGrid.boardLocation + 1;
+      } else {gridRight = "outbound";}
+      
+      // set new adjacent grids active
+      if (captchaStatus == "ready") {activeGrid(gridUp); activeGrid(gridLeft); activeGrid(gridDown); activeGrid(gridRight);}
+      
+      function dormantGrid (givenGrid) {
+        if (givenGrid !== "outbound" && givenGrid !== blankGrid.boardLocation) {
+          get_captchaGrid[givenGrid].style.cursor = "default";
+          get_captchaGrid[givenGrid].style.backgroundColor = "lightblue";
+        }
+      }
+      
+      function activeGrid (givenGrid) {
+        if (givenGrid !== "outbound") {
+          get_captchaGrid[givenGrid].style.cursor = "pointer";
+          get_captchaGrid[givenGrid].style.backgroundColor = "lightgreen";
+        }
+      }
+    }
+    
+    function create_captchaBoard() {
+      // create default grids
+      for (let i = 0; i < maxGrids; i++) {
+        const newGrid = document.createElement("div");
+        
+        newGrid.className = "captcha-grid";
+        newGrid.innerHTML = "<img src='./images/" + `${imgKind}` + "/" + `${imageLayout[i]}` + ".png' alt='" + `${imgKind + (i + indexAdjuster)}` + "'>";
+        newGrid.setAttribute("onclick", "move_blankGrid(" + `${boardLayout[i]}` + ")" );
+        newGrid.style.backgroundColor = "lightblue";
+        
+        // create adjacent grids
+        if (gridUp == i || gridDown == i || gridLeft == i || gridRight == i) {
+          newGrid.style.cursor = "pointer";
+          newGrid.style.backgroundColor = "lightgreen";
+        }
+        // create blank gird
+        else if (blankGrid.boardLocation == i) {
+          blankGrid.image = newGrid.innerHTML;
+          newGrid.innerHTML = blankGrid.innerHTML;
+          
+          newGrid.style.backgroundColor = blankGrid.backgroundColor;
+        }
+        
+        // add grid to captcha-board
+        get_captchaBoard.appendChild(newGrid);
+      }
+    }
+    
+    function get_shuffleLayout() {
+      // 3x3 layout
+      if (difficulty == 1) {
+        // layout one
+        if (Math.floor(Math.random() * 2) == 1) {
+          imageLayout = ["7", "5", "6", 
+                         "1", "4", "3", 
+                         "8", "2","9"];
+        }
+        // layout two
+        else {
+          imageLayout = ["6", "3", "2", 
+                         "8", "7", "1", 
+                         "5", "4", "9"];
+        }
+      }
+      
+      // 4x4 layout
+      if (difficulty == 2) {
+        imageLayout = ["13", "11", "2", "14", 
+                       "15", "12", "9", "10", 
+                       "5", "6", "8", "4", 
+                       "1", "3", "7", "16"];
+      }
+    }
+    
+    function displayAnimation() {
+      setTimeout(show_gridOutline, 1000); //one second
+      
+      function show_gridOutline() {
+        for (let i = 0; i < maxGrids; i++) {
+          get_captchaGrid[i].style.outline = "1px solid black";
+        }
+        setTimeout(shuffle_imageLayout, 1000); //one second
+      }
+      
+      function shuffle_imageLayout() {
+        for (let i = 0; i < maxGrids - 1; i++) {
+         get_captchaGrid[i].innerHTML = "<img src='./images/" + `${imgKind}` + "/" + `${imageLayout[i]}` + ".png' alt='" + `${imgKind + (i + indexAdjuster)}` + "'>";
+        }
+        setTimeout(finishAnimation, 500); //half second
+      }
+      
+      function finishAnimation() {
+        captchaStatus = "ready";
+      }
+    }
+    
+    function myCaptcha() {
+      captchaStatus = "loading";
+      
+      set_captchaDifficulty();
+      create_indexLayout();
+      create_blankGrid();
+      update_blankGrid();
+      create_captchaBoard();
+      get_shuffleLayout();
+      displayAnimation();
+    }
+    
+    function move_blankGrid(clickedLocation) {
+      if (captchaStatus == "ready") {
+        if (clickedLocation !== blankGrid.boardLocation && gridUp == clickedLocation || gridDown == clickedLocation || gridLeft == clickedLocation || gridRight == clickedLocation) {
+          
+          // update imageLayout
+          imageLayout[blankGrid.boardLocation] = imageLayout[clickedLocation];
+          imageLayout[clickedLocation] = blankGrid.imageLocation;
+          
+          // update captchaBoard img
+          get_captchaGrid[blankGrid.boardLocation].innerHTML = get_captchaGrid[clickedLocation].innerHTML;
+          get_captchaGrid[clickedLocation].innerHTML = blankGrid.innerHTML;
+          
+          // update blankGrid
+          blankGrid.givenLocation = clickedLocation;
+          update_blankGrid();
+          
+          // update blankGrid board location
+          get_captchaGrid[blankGrid.boardLocation].style.backgroundColor = blankGrid.backgroundColor;
+          get_captchaGrid[blankGrid.boardLocation].style.cursor = "default";
+          
+          captchaSuccess();
+        }
+      }
+      
+      function captchaSuccess() {
+        if (imageLayout.toString() == pictureLayout.toString() ) {
+          captchaStatus = "off";
+          setTimeout(captchaCompleted, 2000); // two seconds
+          
+          function captchaCompleted() {
+            window.top.postMessage('success', '*');
+          }
+        }
+      }
+    }
   </script>
 </body>
 </html>
